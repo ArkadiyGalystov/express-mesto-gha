@@ -1,8 +1,8 @@
 const User = require('../models/user');
-
-const ERROR_BAD_REQUEST = 400;
-const ERROR_NOT_FOUND = 404;
-const ERROR_SERVER_ERROR = 500;
+const {
+  ERROR_BAD_REQUEST,
+  ERROR_NOT_FOUND,
+  ERROR_SERVER_ERROR } = require('./utils/errors');
 
 const getUsers = (req, res) => {
   User.find({})
@@ -34,7 +34,7 @@ const createUser = (req, res) => {
   const { name, about, avatar } = req.body;
   User
     .create({ name, about, avatar })
-    .then((user) => res.status(201).send(user))
+    .then((user) => res.send(user))
     .catch((err) => {
       if (err.name === 'ValidationError') {
         res.status(ERROR_BAD_REQUEST).send({ message: 'Переданы некорректные данные' });
