@@ -1,30 +1,81 @@
 const mongoose = require('mongoose');
-const validator = require('validator');
+const bcrypt = require('bcrypt');
+const { Schema } = mongoose;
+//const validator = require('validator');
+const { URL_REGEX } = require('../utils/constants');
 
-const userSchema = new mongoose.Schema(
+const userSchema = new Schema(
   {
-    name: {
-      type: String,
-      required: [true, 'Поле "name" должно быть заполнено'],
-      minlength: [2, 'Минимальная длина поля "name" - 2'],
-      maxlength: [30, 'Максимальная длина поля "name" - 30'],
-    },
-    about: {
-      type: String,
-      required: [true, 'Поле "about" должно быть заполнено'],
-      minlength: [2, 'Минимальная длина поля "about" - 2'],
-      maxlength: [30, 'Максимальная длина поля "about" - 30'],
-    },
     avatar: {
       type: String,
-      required: true,
+      default: 'https://pictures.s3.yandex.net/resources/jacques-cousteau_1604399756.png',
       validate: {
-        validator: (v) => validator.isURL(v),
-        message: 'Некорректный URL',
+        validator: (url) => URL_REGEX.test(url),
+        message: 'Требуется ввести URL',
+      },
+    },
+
+    name: {
+      type: String,
+      default: 'Жак-Ив Кусто',
+      validate: {
+        validator: ({ length }) => length >= 2 && length <= 30,
+        message: 'Имя пользователя должно быть длиной от 2 до 30 символов',
+      },
+    },
+
+    about: {
+      type: String,
+      default: 'Исследователь',
+      validate: {
+        validator: ({ length }) => length >= 2 && length <= 30,
+        message: 'Информация о пользователе должна быть длиной от 2 до 30 символов',
+      },
+    },
+
+    password: {
+      type: String,
+      required: true,
+      select: false,
+      validate: {
+        validator: ({ length }) => length >= 6,
+        message: 'Пароль должен состоять минимум из 6 символов',
+      },
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      validate: {
+        validator: (email) => /.+@.+\..+/.test(email),
+        message: 'Требуется ввести электронный адрес',
       },
     },
   },
-  { versionKey: false },
+
+  {
+    versionKey: false,
+    statics: {
+      findUserByCredentials(email, password) {
+        return this
+          .findOne({ email })
+          .select('+password')
+          .then((user) => {
+            if (user) {
+              return bcrypt.compare(password, user.password)
+                .then((matched) => {
+                  if (matched) return user;
+
+                  return Promise.reject();
+                });
+            }
+
+            return Promise.reject();
+          });
+      },
+    },
+  },
 );
 
 module.exports = mongoose.model('user', userSchema);
